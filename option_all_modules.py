@@ -271,7 +271,19 @@ def positions_asin_excel(exl_order):
 
 
 
-
+# def positions_asin_excel2(exl_order):
+#     # ----------check order List from excel sheet an it contains order type (BUY/SELL) as well as compared to above function--------- 
+#     all_positions_list=[]
+#     for i in range(row_excel_start_order, row_excel_end_order):   
+#         security = exl_order[i,5].value
+#         strategy = exl_order[i,2].value
+#         order_type = exl_order[i,40].value
+        
+#         if security is not None:
+#             unique_strategy_order = strategy + "#" + security + "#" + order_type
+#             all_positions_list.append(unique_strategy_order)
+        
+#     return all_positions_list
 
 
 
@@ -544,33 +556,38 @@ def place_robo_order(obj, instrument_list, ticker, up_down, strategy, exl_order,
             if stock2 is None:
                 print(f"Sell {quantity_option} Lots of {final_contract_sell}")
                 exl_order[i,1].value = dt.datetime.now()
-                exl_order[i,2].value = strategy
+                exl_order[i,2].value = strategy# & "_SELL"
                 exl_order[i,3].value = "Intraday"
                 exl_order[i,4].value = "Together"
                 exl_order[i,5].value = ticker
                 exl_order[i,6].value = final_contract_sell
                 exl_order[i,7].value = lot_size
+                exl_order[i,10].value = loss_limit
+                exl_order[i,11].value = profit_limit
                 exl_order[i,40].value = "SELL"
                 exl_order[i,41].value = get_ltp_OPTION(obj, instrument_list, final_contract_sell, exchange="NFO")
                                     #def get_ltp_OPTION(obj, instrument_list, ticker, exchange="NFO")
                 exl_order[i,42].value = quantity_option #quantity(final_contract_sell)
+                
                             
                 i = i+1
                 print(f"Buy {quantity_option} Lots of {final_contract_buy}")
                 exl_order[i,1].value = dt.datetime.now()
-                exl_order[i,2].value = strategy
+                exl_order[i,2].value = strategy# "_BUY"
                 exl_order[i,3].value = "Intraday"
                 exl_order[i,4].value = "Together"
                 exl_order[i,5].value = ticker
                 exl_order[i,6].value = final_contract_buy
                 exl_order[i,7].value = lot_size
+                exl_order[i,10].value = loss_limit
+                exl_order[i,11].value = profit_limit
                 exl_order[i,40].value = "BUY"
                 exl_order[i,41].value = get_ltp_OPTION(obj, instrument_list, final_contract_buy, exchange="NFO")
                 exl_order[i,42].value = quantity_option #quantity(final_contract_buy)
 
                 break  # As above is for 1 ticker only
     
-    return 1
+    return None
 
 
 #place_robo_order(instrument_list, "BANKNIFTY", "BUY", exchange="NSE")
@@ -665,17 +682,22 @@ def check_individual_open_positions(obj, instrument_list, exl_order):
             
             total_invested_individual = exl_order[i,43].value
             
+            ind_PnL = exl_order[i,52].value
+            
             current_price = get_ltp_OPTION(obj, instrument_list, stock, exchange="NFO")
-            #print(colored(f"Current price for {stock} = {current_price}", "yellow"))
+            #print(colored(f"Current price for {stock} = {current_price}", "green"))
             
             if current_price is not None:
+            #if True:
                 
                 if buy_sell == "BUY":
-                    ind_PnL = (current_price-stock_price)*stock_qty*lot_per_option
+                    #ind_PnL = (current_price-stock_price)*stock_qty*lot_per_option
                     buy_sell_final = "SELL"
                 else:
-                    ind_PnL = -(current_price-stock_price)*stock_qty*lot_per_option
+                    #ind_PnL = -(current_price-stock_price)*stock_qty*lot_per_option
                     buy_sell_final = "BUY"
+                    
+                #print(f"{ind_PnL}  ###### {total_invested_individual}")
                 
                 if ind_PnL < -1 * total_invested_individual * loss_limit/100: # if we have Loss 
                     print(colored(f"22222 sahab LOSSSSSS {ind_PnL}", 'red'))
@@ -690,6 +712,59 @@ def check_individual_open_positions(obj, instrument_list, exl_order):
                             
     return None
                 
+
+
+
+def CLOSE_allindividual_open_positions(obj, instrument_list, exl_order):
+    
+    # this must be invoked after time out or GLOBAL loss limit reached. 
+
+    print("CLOSE_allindividual_open_positions Fucntion running....")
+   
+    for i in range(row_excel_start_order, row_excel_end_order):  # we have defined global r to get start of ORDER excel sheet 
+        
+        stock = exl_order[i,6].value
+        initial_order = exl_order[i,40].value
+        final_order = exl_order[i,47].value            
+        
+        if initial_order is not None and final_order is None:
+            
+            buy_sell = exl_order[i,40].value
+            stock_price = exl_order[i,41].value
+            stock_qty = exl_order[i,42].value
+            lot_per_option = exl_order[i,7].value
+            
+            total_invested_individual = exl_order[i,43].value
+            
+            ind_PnL = exl_order[i,52].value
+            
+            current_price = get_ltp_OPTION(obj, instrument_list, stock, exchange="NFO")
+            exl_order[i,50].value = current_price # just to update right before closing the order
+            #print(colored(f"Current price for {stock} = {current_price}", "green"))
+            
+            if buy_sell == "BUY":
+                #ind_PnL = (current_price-stock_price)*stock_qty*lot_per_option
+                buy_sell_final = "SELL"
+            else:
+                #ind_PnL = -(current_price-stock_price)*stock_qty*lot_per_option
+                buy_sell_final = "BUY"                
+            place_order_loss(stock,buy_sell_final,stock_qty,current_price,ind_PnL,exl_order, i)
+            
+    print(colored(f"ALL ORDERS CLOSED", 'red'))        
+                            
+    return None
+                
+
+
+
+
+def closing_theday(obj, instrument_list, exl_order):
+    
+    print("Closing the Day function Not prepared yet")
+    CLOSE_allindividual_open_positions(obj, instrument_list, exl_order)
+
+    return None
+
 
 
 
@@ -1767,3 +1842,24 @@ def update_global_pnl_excel(securities, exl_global_pnl, wb):
                                 
     return None
 #update_global_pnl_excel("BANKNIFTY")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

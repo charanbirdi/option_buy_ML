@@ -98,31 +98,6 @@ exl_order.range("AY16:AY300").clear_contents()
 
 
 
-
-
-
-
-
-
-
-
-# exl_deltanutral.range("B16:S300").clear_contents()
-# exl_deltanutral.range("AL16:AQ300").clear_contents()
-# exl_deltanutral.range("AU16:AW300").clear_contents()
-# exl_deltanutral.range("AY16:AY300").clear_contents()
-# exl_deltanutral.range("BN16:BO600").clear_contents()
-# exl_deltanutral.range("BD16:BE600").clear_contents()
-# exl_deltanutral.range("A16:BL300").color = None
-
-# exl_expiry_bullspread.range("B16:S300").clear_contents()
-# exl_expiry_bullspread.range("AL16:AQ300").clear_contents()
-# exl_expiry_bullspread.range("AU16:AW300").clear_contents()
-# exl_expiry_bullspread.range("AY16:AY300").clear_contents()
-# exl_expiry_bullspread.range("BN16:BO600").clear_contents()
-# exl_expiry_bullspread.range("BD16:BE600").clear_contents()
-# exl_expiry_bullspread.range("A16:BL300").color = None
-
-
 # def get_last_row_Pnl_curve(exl):
 #     #row = 17
 #     last = exl.range('BN5000').end('up').row
