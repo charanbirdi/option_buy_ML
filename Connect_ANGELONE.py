@@ -56,16 +56,16 @@ try_count_long = 7
 try_count_short = 4
 
 
+key_secret = open(r"C:\Users\chara\OneDrive\Desktop\Algorithmic_Trading\03_Project_AngleOne\01_Angelone_Key\angelonekey.txt","r").read().split()
+
+API_KEY = key_secret[0]
+CLIENT_CODE = key_secret[1]
+PWD = key_secret[2] #Your Pin
+AUTH_TOKEN = key_secret[3]  #Your QR code value
+token = key_secret[4] #for OTP https://smartapi.angelbroking.com/enable-totp
 
 
 
-
-
-API_KEY = 'oPvM0VnS' #
-CLIENT_CODE = 'C52284659'
-PWD = '1030' #Your Pin
-AUTH_TOKEN = '2a68e665-d2d5-42b6-9c73-c2139545c8c0'  #Your QR code value
-token = 'PGAFWLOTMLQKIR3EMWOGHU6KVY' #for OTP https://smartapi.angelbroking.com/enable-totp
 
 
 try_con = 0
