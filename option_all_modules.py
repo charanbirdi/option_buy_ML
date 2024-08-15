@@ -379,8 +379,9 @@ def individual_intraday_data(obj, ticker, interval, instrument_list,exchange="NS
                  "exchange": exchange,
                  "symboltoken": token_lookup(ticker,instrument_list),
                  "interval": interval,
-                 "fromdate": (dt.date.today() - dt.timedelta(1)).strftime('%Y-%m-%d') + ' 09:15', 
-                 "todate": dt.datetime.now().strftime('%Y-%m-%d %H:%M')
+                 "fromdate": (dt.date.today() - dt.timedelta(0)).strftime('%Y-%m-%d') + ' 09:15', #change 0 to 1/2 for weekends
+                 #"todate": dt.datetime.now().strftime('%Y-%m-%d %H:%M')
+                 "todate": (dt.date.today() - dt.timedelta(0)).strftime('%Y-%m-%d') + ' 09:45' #change 0 to 1/2 for weekends
                  }
         hist_data = obj.getCandleData(params)       
         try_ind_intraday = 0
@@ -760,7 +761,7 @@ def CLOSE_allindividual_open_positions(obj, instrument_list, exl_order):
 
 def closing_theday(obj, instrument_list, exl_order):
     
-    print("Closing the Day function Not prepared yet")
+    print("Closing the Day function Not prepared yet...............")
     CLOSE_allindividual_open_positions(obj, instrument_list, exl_order)
 
     return None
@@ -1765,10 +1766,10 @@ start_global_excel = 12
 end_global_excel = 200
 
 def update_excel_global_pnl(tickers, exl_global_pnl):
+    print("update_excel_global_pnl function is running.............")
     # this function will write datetime and security as per tickers list
     
     last = exl_global_pnl.range('C10000').end('up').row
-    #print(f"wahhhhhhhhhhhhhhhh={last}")
     
     for ticker in tickers:
         for i in range(start_global_excel, end_global_excel):
@@ -1780,12 +1781,7 @@ def update_excel_global_pnl(tickers, exl_global_pnl):
                 if (datetime.date() == dt.datetime.now().date() and security_exl==ticker):
                     #print("Already There")
                     break
-                #else:
             if i == end_global_excel-1:
-                #print(f"rowwwwwwwwwwwwwwwwwwwwwwwww={i}")
-                # now write there 
-                
-                                
                 exl_global_pnl[last,2].value = dt.datetime.now()
                 exl_global_pnl[last,3].value = dt.datetime.now().date()
                 exl_global_pnl[last,6].value = ticker
@@ -1796,10 +1792,13 @@ def update_excel_global_pnl(tickers, exl_global_pnl):
 #update_excel_global_pnl(['BANKNIFTY', 'NIFTY'], exl_global_pnl)
 
 
+
+
+
 def check_PnL_asper_excel_security(security, sheet):
     #print(colored("check_global_PnL Fucntion running....","green"))
     global_PnL = 0    
-    for i in range(row_excel_start_order, 20): #row_excel_end_order
+    for i in range(row_excel_start_order, 100): #row_excel_end_order
         stock = sheet[i,5].value
         #print(sheet.name, stock, security)
         if stock == security:

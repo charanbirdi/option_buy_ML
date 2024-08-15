@@ -85,10 +85,6 @@ exl_option_buy = wb.sheets['option_buy']
 exl_global_pnl = wb.sheets['Global_PnL']
 exl_all_order_BUY = wb.sheets['all_order']
 
-
-#print(exl_filter.name)
-#print(exl_filter[1,3].value)
-
 exl_filter.range("A3:K600").clear_contents()
 exl_filter.range("Y3:Z600").clear_contents()
 
@@ -98,58 +94,53 @@ exl_filter.range("Y3:Z600").clear_contents()
 
 
 
-# def get_last_row_Pnl_curve(exl):
-#     #row = 17
-#     last = exl.range('BN5000').end('up').row
-#     # for i in range(17, 1000):
-#     #     date = exl[i,65].value
-#     #     if date is None:
-#     #         return i
-#     return last
-# get_last_row_Pnl_curve(exl_deltanutral)
-
-
-
+import datetime as dt
 def clear_excel_function(exl):
+    
     print(f"Clear data for {exl.name}.......") 
     clear_excel = True
     for i in range(row_excel_start_order, row_excel_end_order):
         ticker = exl[i,6].value
+        datetime_exl = exl[i,1].value
         initial_order = exl[i,40].value
         final_order = exl[i,48].value
-        if (ticker is not None and final_order is None):
-            print(f"No need to clear excel file for {exl.name}")
-            clear_excel = False
-            last_row = exl.range('BN5000').end('up').row + 1 # so that PnL curve start from where it lefts
-            break
+        
+        
+        if datetime_exl is not None:
             
-    if clear_excel:
-        exl.range("B16:S300").clear_contents()
-        exl.range("AL16:AQ300").clear_contents()
-        exl.range("AU16:AW300").clear_contents()
-        exl.range("AY16:AY300").clear_contents()  
-        
-        exl.range("BN16:BO600").clear_contents() #additional
-        
-        last_row = 17
-      
+            if datetime_exl.date() == dt.date.today():
+            #if (ticker is not None and final_order is None):
+                #print(f"No need to clear excel file for {exl.name}")
+                clear_excel = False
+                last_row = exl.range('BN5000').end('up').row + 1 # so that PnL curve start from where it lefts
+                #print(i)
+                #break
+            else:
+                #exl.range("B16:S300").clear_contents()
+                exl.range((i+1,1), (i+1,20)).clear_contents() # for clear, we need to add 1 intentionally                 
+                exl.range((i+1,38), (i+1,43)).clear_contents()
+                exl.range((i+1,47), (i+1,49)).clear_contents()
+                exl.range((i+1,51), (i+1,51)).clear_contents()
+                
+                exl.range((i+1,1), (i+1,54)).color = None
+                
+                #exl.range("AL16:AQ300").clear_contents()
+                #exl.range("AU16:AW300").clear_contents()
+                #exl.range("AY16:AY300").clear_contents()               
+                last_row = 17
+        else:
+            last_row = 17
+                
+    exl.range("BN16:BO600").clear_contents() #additional
+
+    
+    
     return last_row
 
 global_row_delta = clear_excel_function(exl_option_buy)
 
 
-# if exl_expiry_bullspread[16,1].value is None or exl_expiry_bullspread[16,1].value.date() < dt.datetime.now().date():        
-#     exl_expiry_bullspread.range("B16:S300").clear_contents()
-#     exl_expiry_bullspread.range("AL16:AQ300").clear_contents()
-#     exl_expiry_bullspread.range("AU16:AW300").clear_contents()
-#     exl_expiry_bullspread.range("AY16:AY300").clear_contents()
-#     exl_expiry_bullspread.range("BN16:BO600").clear_contents()
-#     exl_expiry_bullspread.range("BD16:BE600").clear_contents()
-#     exl_expiry_bullspread.range("A16:BL300").color = None
-    
-#     exl_expiry_bullspread.range("I2:J12").clear_contents()
-#     exl_expiry_bullspread.range("P2:R12").clear_contents()
-    
+  
 
 
 
@@ -170,8 +161,8 @@ hi_lo_prices = {}
 # Above limit should be less than lower mentioned limits , logically
 # below limits are to filter the instruments but I have disabled the same in strategy------
 #-----Strategy Limits------------
-LOW_LIMIT = 1.2 #0.99 # change back to < 1 if not doing experiemnt
-HIGH_LIMIT = 0.8 #1.01 # change back to > 1 if not doing experiemnt
+LOW_LIMIT = 0.998 #0.99 # change back to < 1 if not doing experiemnt
+HIGH_LIMIT = 1.004 #1.01 # change back to > 1 if not doing experiemnt
 #VOL_LIMIT = 0.5
 
 #-----------POSITION SIZE LIMIT-------------------
@@ -215,7 +206,7 @@ The easiest solution is to reopen the file for writing from your clearing functi
 
 
 
-tickers = ['BANKNIFTY', 'NIFTY'] #'BANKNIFTY', 'NIFTY', 'FINNIFTY'
+tickers = ['BANKNIFTY', 'NIFTY', 'FINNIFTY'] #'BANKNIFTY', 'NIFTY', 'FINNIFTY'
 print(f"INSTRUMENT OF INTEREST = {tickers}")
 #logger.info(f"INSTRUMENT OF INTEREST = {tickers}")
 
@@ -235,7 +226,7 @@ print(f'for working days considered = {working_days_considered}, LOOKBEHIND_EFFE
 def indiavix_function():   
 
     indiavix = get_ltp_INSTRUMENT(obj, instrument_list, "INDIA VIX", exchange="NSE")
-    #print(colored(f"Today INDIA VIX = {indiavix}", 'green'))
+    print(colored(f"Today INDIA VIX = {indiavix}", 'green'))
     #logger.info(f"Today INDIA VIX = {indiavix}")    
     return indiavix
 
@@ -316,14 +307,13 @@ def low_high(tickers):
         exl_filter[r_start, 9].value = LOW_LIMIT * value[1]
         #exl_filter[r_start, 8].value = VOL_LIMIT * value[2]
         r_start = r_start + 1
-        
-         
+              
     print("Initial Analysis Done i.e L-H for all Filtered Instruments\n")
     
     return hi_lo_prices
 
 
-hi_lo_prices = low_high(tickers)
+hi_lo_prices = low_high(tickers) #if we need to run on weekends or holidays then need to change other function
 
 print(hi_lo_prices)
 
@@ -342,25 +332,29 @@ fil_tickers = tickers
 
 def orb_strat(obj, tickers, hi_lo_prices, strategy_days, exchange="NSE"): # Here tickers are filtered tickers--
     
-    print(colored("ORB strategy Function running....", "green"))    
+    print(colored("ORB strategy Function running....", "green"))  
     
-    for ticker in tickers:
-        print(f"ORB strategy Function running for........{ticker}")
-        
-        unique_strategy_order = "Open_Range_Breakout" + "#" + ticker
-        positions = positions_asin_excel(exl_option_buy) # Order list as per excel sheet
-        
-        #strategy_days = 1 # if holiday put 1 or 2 else 0
-        if unique_strategy_order not in positions:
-            df_data = get_latestdata_DataFrame(obj, ticker, instrument_list, strategy_days, exchange) # Get latest data
+    if dt.datetime.now() > dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 09:45','%Y-%m-%d %H:%M'):        
+    
+        for ticker in tickers:
+            print(f"ORB strategy Function running for........{ticker}")
             
-            if df_data["close"].iloc[-1] >= HIGH_LIMIT * hi_lo_prices[ticker][0]:                
-                place_robo_order(obj, instrument_list, ticker, "UP", "Open_Range_Breakout", exl_option_buy)
-                #print("bought {} stocks of {}".format(quantity(ticker),ticker))
-            elif df_data["close"].iloc[-1] <= LOW_LIMIT * hi_lo_prices[ticker][1]:
-                #print(unique_strategy_order)
-                place_robo_order(obj, instrument_list, ticker, "DOWN", "Open_Range_Breakout", exl_option_buy)
-                #print("sold {} stocks of {}".format(quantity(ticker),ticker))
+            unique_strategy_order = "Open_Range_Breakout" + "#" + ticker
+            positions = positions_asin_excel(exl_option_buy) # Order list as per excel sheet
+            
+            #strategy_days = 1 # if holiday put 1 or 2 else 0
+            if unique_strategy_order not in positions:
+                df_data = get_latestdata_DataFrame(obj, ticker, instrument_list, strategy_days, exchange) # Get latest data
+                
+                if df_data["close"].iloc[-1] >= HIGH_LIMIT * hi_lo_prices[ticker][0]:                
+                    place_robo_order(obj, instrument_list, ticker, "UP", "Open_Range_Breakout", exl_option_buy)
+                    #print("bought {} stocks of {}".format(quantity(ticker),ticker))
+                elif df_data["close"].iloc[-1] <= LOW_LIMIT * hi_lo_prices[ticker][1]:
+                    #print(unique_strategy_order)
+                    place_robo_order(obj, instrument_list, ticker, "DOWN", "Open_Range_Breakout", exl_option_buy)
+                    #print("sold {} stocks of {}".format(quantity(ticker),ticker))
+    else:
+        print(colored("Hale Time ni hoyeya for ORB strategy ", "red"))
             
     return None
 
@@ -371,15 +365,14 @@ def orb_strat(obj, tickers, hi_lo_prices, strategy_days, exchange="NSE"): # Here
 
 def check_starttime_vix_condition(time, vix_limit, exl):
     #if dt.datetime.now() > dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 09:35','%Y-%m-%d %H:%M') and dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 23:00','%Y-%m-%d %H:%M'):
-    if (dt.datetime.now() > dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d') + time, '%Y-%m-%d %H:%M') and 
-        dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 23:00','%Y-%m-%d %H:%M')):
+    if (dt.datetime.now() > dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d') + time, '%Y-%m-%d %H:%M')):
         exl[1, 9].value = str(dt.datetime.now().time())
         if indiavix_function() > vix_limit:
             exl[2, 9].value = indiavix_function()
             return True
     return False
 
-#check_starttime_vix_condition(" 09:35", 12)
+check_starttime_vix_condition(" 09:45", 12, exl_option_buy)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~END OF Initial Strategies run--------------------------------
 
@@ -402,9 +395,7 @@ already_initialorder_done_for_delta_nutral = False
 def copy_alltrades_excel(from_exl, to_exl):
     
     last_row_from = from_exl.range('B5000').end('up').row
-    last_row_to = to_exl.range('B5000').end('up').row
-    #print(last_row_to)
-    
+    last_row_to = to_exl.range('B5000').end('up').row    
     from_exl.range((16,1), (last_row_from+1,53)).copy()
     to_exl.range((last_row_to+1,1), (last_row_to+1,1)).paste()    #to_exl.range("A1").paste(paste='formats')
     
@@ -415,7 +406,7 @@ def copy_alltrades_excel(from_exl, to_exl):
 
 
 
-while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 19:55','%Y-%m-%d %H:%M'):
+while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 17:27','%Y-%m-%d %H:%M'):
     
     print("\n")
     print("_"*80)    
@@ -464,7 +455,7 @@ while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m
     #Grand_Global_PnL = global_PnL + global_row_delta + expiry_spread_global_PnL
     global_loss_limit = -(pos_size) * (Total_loss_limit)/100
     
-    update_global_pnl_excel(tickers, exl_global_pnl, wb)
+    #update_global_pnl_excel(tickers, exl_global_pnl, wb)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~end of Check Global P&L for all strategies------------------------------------------------
 
@@ -493,7 +484,8 @@ while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m
 ########### close karo 22 ji ##########################
     
 closing_theday(obj, instrument_list, exl_option_buy)
-copy_alltrades_excel(exl_option_buy, exl_all_order_BUY) 
+copy_alltrades_excel(exl_option_buy, exl_all_order_BUY)
+update_global_pnl_excel(tickers, exl_global_pnl, wb)
 sys.exit(0) # 0- without error message, 1-with error message in end    
     
 
@@ -502,6 +494,3 @@ sys.exit(0) # 0- without error message, 1-with error message in end
 
 # if __name__ == '__main__':
 #     main()
-    
-    
-    
