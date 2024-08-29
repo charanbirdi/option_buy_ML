@@ -40,7 +40,9 @@ from option_all_modules import (token_lookup_OPTION,
                                 delta_nutral_initial_orders, delta_nutral_adjustment,                                
                                 expiry_bull_call_spread_initial_orders, expiry_bull_call_spread_adjustment,
                                 already_in_orderlist,
-                                CLOSE_allindividual_open_positions, closing_theday)
+                                CLOSE_allindividual_open_positions, closing_theday,
+                                copy_alltrades_excel,
+                                clear_excel_function)
 
 from record_logs import logging_function
 
@@ -90,59 +92,15 @@ exl_filter.range("Y3:Z600").clear_contents()
 
 
 
-
-
-
-
-import datetime as dt
-def clear_excel_function(exl):
-    
-    print(f"Clear data for {exl.name}.......") 
-    clear_excel = True
-    for i in range(row_excel_start_order, row_excel_end_order):
-        ticker = exl[i,6].value
-        datetime_exl = exl[i,1].value
-        initial_order = exl[i,40].value
-        final_order = exl[i,48].value
-        
-        
-        if datetime_exl is not None:
-            
-            if datetime_exl.date() == dt.date.today():
-            #if (ticker is not None and final_order is None):
-                #print(f"No need to clear excel file for {exl.name}")
-                clear_excel = False
-                last_row = exl.range('BN5000').end('up').row + 1 # so that PnL curve start from where it lefts
-                #print(i)
-                #break
-            else:
-                #exl.range("B16:S300").clear_contents()
-                exl.range((i+1,1), (i+1,20)).clear_contents() # for clear, we need to add 1 intentionally                 
-                exl.range((i+1,38), (i+1,43)).clear_contents()
-                exl.range((i+1,47), (i+1,49)).clear_contents()
-                exl.range((i+1,51), (i+1,51)).clear_contents()
-                
-                exl.range((i+1,1), (i+1,54)).color = None
-                
-                #exl.range("AL16:AQ300").clear_contents()
-                #exl.range("AU16:AW300").clear_contents()
-                #exl.range("AY16:AY300").clear_contents()               
-                last_row = 17
-        else:
-            last_row = 17
-                
-    exl.range("BN16:BO600").clear_contents() #additional
-
-    
-    
-    return last_row
-
 global_row_delta = clear_excel_function(exl_option_buy)
 
 
   
 
-
+#------------Telegram Messages---------------
+from Telegram import telegram_message
+#tel_msg = f"{buy_sell} {quantity} no. of {ticker} for {ltp_final}"
+#telegram_message(tel_msg)
 
 
 
@@ -171,7 +129,7 @@ spend_limit = 90 # 90% of total available
 #loss_limit = 50 # Not required here, thats weird
 #profit_limit = 90 # Not required here, thats weird
 
-Total_loss_limit = 10 # 10% of position size
+Total_loss_limit = 15 # 10% of position size
 single_pos_size = 20000
 #pos_size = single_pos_size * (len(tickers)+1)
 pos_size = single_pos_size * 10
@@ -279,7 +237,7 @@ def ML_STRATEGY():
 
 
 
-def low_high(tickers):
+def low_high_intra(tickers):
     
     #extract the historical data at 9:20 am         
     #data_0920 = hist_data_0920(obj, tickers, lookbehind_days_low_hi, CANDLE_INTERVAL_HIST_DATA, instrument_list)
@@ -313,7 +271,7 @@ def low_high(tickers):
     return hi_lo_prices
 
 
-hi_lo_prices = low_high(tickers) #if we need to run on weekends or holidays then need to change other function
+hi_lo_prices = low_high_intra(tickers) #if we need to run on weekends or holidays then need to change other function
 
 print(hi_lo_prices)
 
@@ -392,21 +350,14 @@ already_initialorder_done_for_delta_nutral = False
 
 #ML_STRATEGY()
 
-def copy_alltrades_excel(from_exl, to_exl):
-    
-    last_row_from = from_exl.range('B5000').end('up').row
-    last_row_to = to_exl.range('B5000').end('up').row    
-    from_exl.range((16,1), (last_row_from+1,53)).copy()
-    to_exl.range((last_row_to+1,1), (last_row_to+1,1)).paste()    #to_exl.range("A1").paste(paste='formats')
-    
-    return None
 
 
 
 
 
 
-while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 17:27','%Y-%m-%d %H:%M'):
+
+while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 15:00','%Y-%m-%d %H:%M'):
     
     print("\n")
     print("_"*80)    
@@ -448,7 +399,8 @@ while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m
     Grand_Global_PnL = Grand_Global_PnL + Option_BUY_global_PnL
     
     
-    
+    tel_msg = f"Global P&L = {Grand_Global_PnL}"
+    telegram_message(tel_msg)
                
         
         
@@ -464,6 +416,7 @@ while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m
         print(colored(f"GLOBAL LOSS LIMIT = {global_loss_limit} reached", "red"))
         print(f"Changga {global_PnL} loss ho gya, band kardo 22")
         print("Exiting all positions / only loosing postions, have to check and decide.....")
+        break
         #closing_theday()
     
     else:
@@ -486,11 +439,7 @@ while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m
 closing_theday(obj, instrument_list, exl_option_buy)
 copy_alltrades_excel(exl_option_buy, exl_all_order_BUY)
 update_global_pnl_excel(tickers, exl_global_pnl, wb)
+
+telegram_message("Exiting for the day~~~~~~~~")
+
 sys.exit(0) # 0- without error message, 1-with error message in end    
-    
-
-
-
-
-# if __name__ == '__main__':
-#     main()

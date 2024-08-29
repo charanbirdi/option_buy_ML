@@ -51,12 +51,24 @@ import xlwings as xw
 
 starttime = time.time()
 
+
+from Telegram import telegram_message
+
+
 #-------Sleep time variable----------------------
 sleep_time_long = 3
 sleep_time_short = 3
 
 try_count_long = 5
 try_count_short = 4
+
+
+
+
+
+
+
+
 
 
 # -----------LOSS PROFIT LIMITS------------
@@ -90,7 +102,7 @@ loss_limit = 50 # 10% of position size
 profit_limit = 100 # 10% of position size
 
 Total_loss_limit = 5
-single_pos_size = 20000
+single_pos_size = 8000 #20000
 #pos_size = single_pos_size * (len(tickers)+1)
 pos_size = single_pos_size * 20
 
@@ -129,6 +141,72 @@ strike_close_limit = 1 # 1 in %age
 premium_limit = 10 # in %age # after that we dont do adjustments
 
 #-------------------end of For Bull Spread for Expiry only Strategy------------------
+
+
+
+
+
+
+def all_orders_done(exl):
+    #print("All Orders Done function...check if all Orders are completed one cycle....")
+    for i in range(row_excel_start_order, row_excel_end_order):
+        initial_order = exl[i,40].value
+        final_order = exl[i,48].value
+        if (initial_order  is not None and final_order is None):
+            return False   
+    return True
+
+
+
+def clear_row(exl, i):
+    #exl.range("B16:S300").clear_contents()
+    exl.range((i+1,1), (i+1,20)).clear_contents() # for clear, we need to add 1 intentionally                 
+    exl.range((i+1,38), (i+1,43)).clear_contents()
+    exl.range((i+1,47), (i+1,49)).clear_contents()
+    exl.range((i+1,51), (i+1,51)).clear_contents()
+                
+    exl.range((i+1,1), (i+1,54)).color = None   #(242,242,242)
+    exl.range("BN16:BO600").clear_contents() #additional
+
+
+
+#import datetime as dt
+def clear_excel_function(exl):
+    
+    print(f"Clear data for {exl.name}.......") 
+    clear_excel = True
+    for i in range(row_excel_start_order, row_excel_end_order):
+        ticker = exl[i,6].value
+        intraday = exl[i,3].value
+        datetime_exl = exl[i,1].value
+        initial_order = exl[i,40].value
+        final_order = exl[i,48].value
+        
+        
+        if datetime_exl is not None:
+            
+            if datetime_exl.date() == dt.date.today():
+            #if (ticker is not None and final_order is None):
+                pass
+            else:
+                if intraday == "intraday":
+                    clear_row(exl, i)
+                if all_orders_done(exl) == True: # check if all orders of exl are done and not of same day then clear
+                    clear_row(exl, i) #althought we could clear all in one but......
+  
+    return None
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -236,10 +314,12 @@ def get_ltp_INSTRUMENT(obj, instrument_list, ticker,exchange="NSE"):
 
 def quantity(obj, instrument_list, ticker,exchange="NFO"):
     
-    #global single_pos_size    
     ltp = get_ltp_OPTION(obj, instrument_list, ticker, exchange)
     lot_option = int(token_lookup_OPTION(ticker, instrument_list)[1])
     quantity_lots = int(single_pos_size/(ltp*lot_option))
+
+    #quantity_lots = 2 # I have hard coaded the lots to check relistic P&L
+    
     return quantity_lots
 
 #quantity("FINNIFTY27FEB2420700PE",exchange="NFO")
@@ -570,6 +650,9 @@ def place_robo_order(obj, instrument_list, ticker, up_down, strategy, exl_order,
                                     #def get_ltp_OPTION(obj, instrument_list, ticker, exchange="NFO")
                 exl_order[i,42].value = quantity_option #quantity(final_contract_sell)
                 
+                tel_msg = f"SELL {quantity_option} no. of {final_contract_sell}"
+                telegram_message(tel_msg)
+                
                             
                 i = i+1
                 print(f"Buy {quantity_option} Lots of {final_contract_buy}")
@@ -585,6 +668,9 @@ def place_robo_order(obj, instrument_list, ticker, up_down, strategy, exl_order,
                 exl_order[i,40].value = "BUY"
                 exl_order[i,41].value = get_ltp_OPTION(obj, instrument_list, final_contract_buy, exchange="NFO")
                 exl_order[i,42].value = quantity_option #quantity(final_contract_buy)
+                
+                tel_msg = f"BUY {quantity_option} no. of {final_contract_buy}"
+                telegram_message(tel_msg)
 
                 break  # As above is for 1 ticker only
     
@@ -612,7 +698,12 @@ def check_global_PnL(exl):
         if stock is not None:
             ind_pnl = exl[i,52].value
             if ind_pnl is not None:
-                global_PnL = global_PnL + ind_pnl   
+                global_PnL = global_PnL + ind_pnl 
+
+    global_row_last = exl.range('BN5000').end('up').row
+    print(colored(f"{exl.name} P&L = {global_PnL}", "magenta"))    
+    exl[global_row_last, 65].value = dt.datetime.now()
+    exl[global_row_last, 66].value = global_PnL  
                 
     return global_PnL
 
@@ -726,32 +817,34 @@ def CLOSE_allindividual_open_positions(obj, instrument_list, exl_order):
         
         stock = exl_order[i,6].value
         initial_order = exl_order[i,40].value
-        final_order = exl_order[i,47].value            
+        final_order = exl_order[i,47].value 
+        intraday = exl_order[i,3].value           
         
         if initial_order is not None and final_order is None:
+            if intraday == "intraday":
             
-            buy_sell = exl_order[i,40].value
-            stock_price = exl_order[i,41].value
-            stock_qty = exl_order[i,42].value
-            lot_per_option = exl_order[i,7].value
+                buy_sell = exl_order[i,40].value
+                stock_price = exl_order[i,41].value
+                stock_qty = exl_order[i,42].value
+                lot_per_option = exl_order[i,7].value
+                
+                total_invested_individual = exl_order[i,43].value
+                
+                ind_PnL = exl_order[i,52].value
+                
+                current_price = get_ltp_OPTION(obj, instrument_list, stock, exchange="NFO")
+                exl_order[i,50].value = current_price # just to update right before closing the order
+                #print(colored(f"Current price for {stock} = {current_price}", "green"))
+                
+                if buy_sell == "BUY":
+                    #ind_PnL = (current_price-stock_price)*stock_qty*lot_per_option
+                    buy_sell_final = "SELL"
+                else:
+                    #ind_PnL = -(current_price-stock_price)*stock_qty*lot_per_option
+                    buy_sell_final = "BUY"                
+                place_order_loss(stock,buy_sell_final,stock_qty,current_price,ind_PnL,exl_order, i)
             
-            total_invested_individual = exl_order[i,43].value
-            
-            ind_PnL = exl_order[i,52].value
-            
-            current_price = get_ltp_OPTION(obj, instrument_list, stock, exchange="NFO")
-            exl_order[i,50].value = current_price # just to update right before closing the order
-            #print(colored(f"Current price for {stock} = {current_price}", "green"))
-            
-            if buy_sell == "BUY":
-                #ind_PnL = (current_price-stock_price)*stock_qty*lot_per_option
-                buy_sell_final = "SELL"
-            else:
-                #ind_PnL = -(current_price-stock_price)*stock_qty*lot_per_option
-                buy_sell_final = "BUY"                
-            place_order_loss(stock,buy_sell_final,stock_qty,current_price,ind_PnL,exl_order, i)
-            
-    print(colored(f"ALL ORDERS CLOSED", 'red'))        
+    print(colored(f"ALL ORDERS Intraday CLOSED", 'red'))        
                             
     return None
                 
@@ -800,22 +893,6 @@ def find_lookbehind_effective_days(days):
 
 
 
-
-
-
-
-
-
-def all_orders_done():
-    print("All Orders Done function...check if all Orders are completed one cycle....")
-    for i in range(row_excel_start_order, row_excel_end_order):
-        initial_order = exl_order[i,36].value
-        final_order = exl_order[i,43].value
-        #print(f"allll orderrrrr {initial_order} ~~~~ {final_order}")
-        if (initial_order  is not None and final_order is None):
-            return False   
-    return True
-#if (initial_order == "BUY" & final_order == "SELL") or (initial_order == "SELL" & final_order == "BUY"):
 
     
 def already_in_orderlist(security, exl):
@@ -1145,8 +1222,6 @@ def check_security_percentage_PnL_limit_reached(obj, instrument_list, security, 
     for i in range(row_excel_start_order, row_excel_end_order):
         security2 = exl[i,5].value
         
-          
-        
         if security2 == security:
             option = exl[i,6].value
             initial_order = exl[i,40].value
@@ -1380,10 +1455,10 @@ def delta_nutral_adjustment(obj, instrument_list, tickers, exl_deltanutral):
                 print(f"Lossssss {temp_running_pnl} < {loss_limit}")            
                 print(colored(f"Adjustment Started for {ticker}.........", 'red'))
                 
-                print("ahhhhhhhhhhhhhhhhhhhhhhhhh")
+                #print("ahhhhhhhhhhhhhhhhhhhhhhhhh")
                 print(f"Option which needs Adjustment {option_with_max_profit} with premium = {option_price_adjustment}")
-                print(f"Row_Max_profit = {row_min_profit}, Least profit = {check_least_profit}")
-                print(f"Row_Min_profit = {row_max_profit}, Max Profit = {check_highest_profit}")
+                #print(f"Row_Max_profit = {row_min_profit}, Least profit = {check_least_profit}")
+                #print(f"Row_Min_profit = {row_max_profit}, Max Profit = {check_highest_profit}")
                 
                           
                 
@@ -1425,14 +1500,20 @@ def delta_nutral_adjustment(obj, instrument_list, tickers, exl_deltanutral):
                     delta_nutral_ADJUSTMENT_orders(ticker, option_closest, option_closest_price, lot_per_option, stock_qty, exl_deltanutral, expiry_date, strike_security, sub_strategy, limit_delta_ind_loss, strategy="Delta Nutral")
                 else:
                     sub_strategy = "Strangle"
-                    delta_nutral_ADJUSTMENT_orders(ticker, option_closest, option_closest_price, lot_per_option, stock_qty, exl_deltanutral, expiry_date, strike_security, sub_strategy, limit_delta_ind_loss, strategy="Delta Nutral")      
+                    delta_nutral_ADJUSTMENT_orders(ticker, option_closest, option_closest_price, lot_per_option, stock_qty, exl_deltanutral, expiry_date, strike_security, sub_strategy, limit_delta_ind_loss, strategy="Delta Nutral") 
+
+
+                tel_msg = f"Delta Nutral ~~ Adjustment for {ticker} & Strategy={sub_strategy}"
+                telegram_message(tel_msg)    
+
                 
                 #---Updating premium for max and min profit for analysis only
                 #update_premium_delta_strategy(ticker, exl_deltanutral)
-                plot_asper_exl(tickers, exl_deltanutral)
+                
+                #plot_asper_exl(tickers, exl_deltanutral)
             
             else:
-                print(colored(f"STOPPED Adjustment for {ticker}.........", 'red'))
+                print(colored(f"STOPPED Adjustment for {ticker}.....as we reached STRADDEL", 'red'))
             
     return None
 
@@ -1522,7 +1603,7 @@ def expiry_bull_call_spread_initial_orders(obj, security, option, option_expiry,
             exl[i,50].value = option_closest_price
             exl[i,55].value = "Bull Spread"
             
-            plot_asper_exl([security], exl)
+            #plot_asper_exl([security], exl)
             
             break  # As above is for 1 ticker only
     
@@ -1654,12 +1735,15 @@ def expiry_bull_call_spread_adjustment(obj, instrument_list, tickers, exl):
                     print(colored(f"Step-2 Adjusted {option_closest} with premium = {option_closest_price}", 'green'))
                     sub_strategy = "Kuch nahi"
                     expiry_bull_call_spread_ADJUSTMENT_orders(ticker, option_closest, option_closest_price, option_sell_lot_per_option, option_sell_lots, exl, expiry_sell, strike_security, sub_strategy, expiry_ind_profit_limit, strategy="Bull Spread")
-                    plot_asper_exl(tickers, exl)
+                    #plot_asper_exl(tickers, exl)
                     
                     if exl[1,16].value is None:
                         exl[1,16].value = 1
                     else:
                         exl[1,16].value = exl[1,16].value+1
+
+                    tel_msg = f"Bull Spread ~~ Adjustment for {ticker} & Strategy={sub_strategy}"
+                    telegram_message(tel_msg) 
                     
                 else:
                     print(colored(f"Step-2 Failed for {tickers} as premium = {option_closest_price} is lesssssssss", 'red'))
@@ -1747,7 +1831,15 @@ def plot_asper_exl(tickers, exl):
 
 
 
-
+def copy_alltrades_excel(from_exl, to_exl):
+    
+    last_row_from = from_exl.range('B5000').end('up').row
+    last_row_to = to_exl.range('B5000').end('up').row   
+    #print(last_row_from) 
+    from_exl.range((16,1), (last_row_from+1,53)).copy()
+    to_exl.range((last_row_to+1,1), (last_row_to+1,1)).paste()    #to_exl.range("A1").paste(paste='formats')
+    
+    return None
 
 
 
@@ -1841,24 +1933,3 @@ def update_global_pnl_excel(securities, exl_global_pnl, wb):
                                 
     return None
 #update_global_pnl_excel("BANKNIFTY")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

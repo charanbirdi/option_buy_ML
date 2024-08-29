@@ -55,8 +55,14 @@ sleep_time_short = 4
 try_count_long = 7
 try_count_short = 4
 
+from Telegram import telegram_message
 
-key_secret = open(r"C:\Users\chara\OneDrive\Desktop\Algorithmic_Trading\03_Project_AngleOne\01_Angelone_Key\angelonekey.txt","r").read().split()
+#path_key = r"C:\Users\chara\OneDrive\Desktop\Algorithmic_Trading\03_Project_AngleOne\01_Angelone_Key\angelonekey.txt"
+current_dir = os.getcwd()
+parent_dir = os.path.dirname(current_dir)
+path_key = os.path.join(parent_dir, "01_Angelone_Key", "angelonekey.txt")
+
+key_secret = open(path_key,"r").read().split()
 
 API_KEY = key_secret[0]
 CLIENT_CODE = key_secret[1]
@@ -81,6 +87,7 @@ def connect_ANGELONE():
         
         try_con = 0
         print(colored(f"CONNECTED TO ANGELONE SERVER $$$$$", 'green'))
+        telegram_message("~~~~~~Connected to AngelONE Server~~~~~~")
         return obj
     
     except Exception as e:

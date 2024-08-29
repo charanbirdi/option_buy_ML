@@ -70,7 +70,7 @@ def put_payoff(sT, strike_price, premium):
 
 def plot_final_payoff(ticker, all_args):
     
-    print(f"PRINTINGGGGGG for {ticker}")
+    #print(f"PRINTINGGGGGG for {ticker}")
     
     #strike_price_short_PE, premium_short_PE, stirke_price_short_CE, premium_short_CE = float(strike_price_short_PE), float(premium_short_PE), float(stirke_price_short_CE), float(premium_short_CE)
     long_call_payoff, short_call_payoff, long_put_payoff, short_put_payoff = 0,0,0,0
@@ -116,9 +116,7 @@ def plot_final_payoff(ticker, all_args):
       
     profit = round(max(total_payoff),1)
     loss = round(min(total_payoff), 1)
-    print(f"Profit limit = {loss}, {profit}")
-    #print ("Max Profit %.2f" %profit)
-    #print ("Max Loss %.2f" %loss)
+    #print(f"Profit limit = {loss}, {profit}")
     
     #%matplotlib inline
     fig, ax = plt.subplots()

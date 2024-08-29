@@ -202,16 +202,14 @@ def option_contracts_closest_DELTA(obj, ticker, instrument_list, underlying_pric
     df_final['delta'] = df_final.apply(lambda x: option_greeks(x,obj,instrument_list,underlying_price),axis=1) #working
     #df_final['delta_diff_20'] = abs(abs(df_final['delta']) - 20)
     df_final['delta_diff_20'] = abs(abs(df_final['delta']) - delta_cosidered_selling)
-    
-    #print(df_final)
-    
+        
     delta_20 = df_final['delta_diff_20'].argmin()
     option_delta_20 = df_final.iloc[delta_20]['symbol']
     option_delta = df_final.iloc[delta_20]['delta']
     option_expiry = df_final.iloc[delta_20]['expiry']    
     security_strike = float(df_final.iloc[delta_20]['strike'])/100
     
-    print(f"Option with {option_delta} Delta Greeks = {option_delta_20}")
+    #print(f"Option with Delta = {option_delta} for {option_delta_20}")
     
     return option_delta_20, option_delta, option_expiry, security_strike
 
@@ -292,7 +290,7 @@ def option_contracts_ATM_expiring_today(obj, ticker, instrument_list, underlying
    
     #df_opt_contracts["time_to_expiry_date"] = (pd.to_datetime(df_opt_contracts["expiry"]).dt.strftime("%Y-%m-%d 15:30:00").astype('datetime64[ns]') - dt.datetime.now())/timedelta(days=1)
     # just to make expirty module run , so above statement is modified as below.
-    day_ahead_for_expiry = 4 # for same day expiry, use 0
+    day_ahead_for_expiry = 0 # for same day expiry, use 0
     df_opt_contracts["time_to_expiry_date"] = (pd.to_datetime(df_opt_contracts["expiry"]).dt.strftime("%Y-%m-%d 15:30:00").astype('datetime64[ns]') - dt.datetime.now() - timedelta(days=day_ahead_for_expiry))/timedelta(days=1)
    
     
