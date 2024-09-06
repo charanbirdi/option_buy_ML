@@ -10,14 +10,20 @@ api_hash = 'ca1860543e70b59d80047a7929336e8c'
 
 client = TelegramClient('None', api_id, api_hash)
 
+
 def telegram_message(message):
     async def main(message):
         # await client.send_message('me', 'Hello to myself Charan') 
-        # me in above is for sending messages to saved messages
+        # me in above is for sending messages to saved messages       
+
         await client.send_message('@birdi_angelone_bot', message)
         await asyncio.sleep(2)
     
     with client:
+        
+        #print("XXXXXXXXXXXXXXXXXXXXXXX")
+        #client.log_out()
+        #print(client.session.list_sessions())
         client.loop.run_until_complete(main(message))
 
 

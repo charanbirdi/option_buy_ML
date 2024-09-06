@@ -81,7 +81,7 @@ def connect_ANGELONE():
     try:
         obj=SmartConnect(api_key=API_KEY)
         data = obj.generateSession(CLIENT_CODE, PWD, TOTP(token).now())
-        feed_token = obj.getfeedToken()        
+        feed_token = obj.getfeedToken()
         if obj is None:
             raise Exception("This is an exception")
         

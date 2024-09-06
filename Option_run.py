@@ -45,7 +45,8 @@ from option_all_modules import (token_lookup_OPTION,
                                 already_in_orderlist,
                                 CLOSE_allindividual_open_positions, closing_theday,
                                 copy_alltrades_excel,
-                                clear_excel_function, all_orders_done)
+                                clear_excel_function, all_orders_done, blank_row_adjustment_excel_function,
+                                check_neartoexpiry)
 
 from record_logs import logging_function
 
@@ -112,7 +113,10 @@ all_exl = [exl_order, exl_deltanutral, exl_expiry_bullspread, exl_option_buy]
 #------clear the excle sheets-------------
 for exl in all_exl:
     clear_excel_function(exl)
+    blank_row_adjustment_excel_function(exl)  # delete unused rows and shift rows up, specially for Overnight orders.
 
+
+#XXXXXXXXXXZZZ
 
 #------------Telegram Messages---------------
 from Telegram import telegram_message
@@ -142,7 +146,7 @@ hi_lo_prices = {}
 # below limits are to filter the instruments but I have disabled the same in strategy------
 #-----Strategy Limits------------
 HIGH_LIMIT = 1.006
-LOW_LIMIT = 1-(HIGH_LIMIT-1)  #0.99
+LOW_LIMIT = 1-(HIGH_LIMIT-1)
 #VOL_LIMIT = 0.5
 
 #-----------POSITION SIZE LIMIT-------------------
@@ -190,7 +194,7 @@ The easiest solution is to reopen the file for writing from your clearing functi
 
 
 
-tickers = ['BANKNIFTY', 'NIFTY', 'FINNIFTY'] #'BANKNIFTY', 'NIFTY', 'FINNIFTY'
+tickers = ['FINNIFTY'] #'BANKNIFTY', 'NIFTY', 'FINNIFTY'
 print(f"INSTRUMENT OF INTEREST = {tickers}")
 #logger.info(f"INSTRUMENT OF INTEREST = {tickers}")
 
@@ -457,8 +461,12 @@ def check_expiry_bull_call_spread_startcondition1():
         option, option_expiry, option_strike = option_contracts_ATM_expiring_today(obj, ticker, instrument_list, underlying_price, option_type, exchange="NFO")
         
         
-        if option is not None:            
-            return ticker, option, option_expiry, option_strike, option_type
+        if option is not None:   
+            if dt.datetime.now() > dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 12:00','%Y-%m-%d %H:%M'):
+                print(colored(f"Although Today is expiry for {ticker} but now is not the time for starting for expiry", "red"))  
+                return None, None, None, None, None    
+            else:
+                return ticker, option, option_expiry, option_strike, option_type
                                    
     print(colored("Ajj KOI EXPIRY NIIIII AAAAAA", "red"))
     return None, None, None, None, None
@@ -503,14 +511,22 @@ already_initialorder_done_for_delta_nutral = False
 
 time_count_telegram = 0
 
-while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 15:33','%Y-%m-%d %H:%M'):
+while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 15:35','%Y-%m-%d %H:%M'):
     
     print("\n")
     print("_"*80)    
     print(colored("While loop running.....", "green"))
     print("starting passthrough at {}".format(dt.datetime.now()))
     
-    
+
+
+
+# Check all orders in all strategies if they are expiring TODAY only ------------------------------------------------    
+# 1. If today is expiry and time is more than 15:10PM, then exit all, don't want last moment peak
+    if dt.datetime.now() > dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 15:15','%Y-%m-%d %H:%M'):
+        print(colored("Check all trades near to expiry......", "red"))
+        for exl in all_exl:
+            check_neartoexpiry(exl, obj, instrument_list)
 
 
     
@@ -590,7 +606,7 @@ while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m
 
 
     time_count_telegram += 1
-    if time_count_telegram % 1 == 0:
+    if time_count_telegram % 2 == 0:
         tel_msg = telegram_msg_str
         telegram_message(tel_msg)
 
@@ -613,28 +629,31 @@ while dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m
     
     else:
         if (total_spend/pos_size)*100 < spend_limit:
- #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Running all strategies adjustments-----------------------------------------------
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Running all strategies adjustments-----------------------------------------------
             
             #orb_strat(obj, fil_tickers, hi_lo_prices, lookbehind_days_low_hi, "NSE") # last variable is for how many days we need to check max(high) and min(low)
             orb_strat(obj, fil_tickers, hi_lo_prices_intra, lookbehind_days_low_hi, "NSE") # last variable is for how many days we need to check max(high) and min(low)
             
+            
+            
+            #---We have to STOP adjustment for index for which expiry is today and time is beyong 14:30PM, but how every index has different day expiry ??????????????
             if all_orders_done(exl_deltanutral) == False: # it check even if single order is pending then only run adjustment function, else it will give error.
                 delta_nutral_adjustment(obj, instrument_list, tickers, exl_deltanutral)
+
             
-            #if already_initialorder_done_for_bull_call_spread == True:
-            if expiry_bull_call_spread_startcondition1[0] is not None:
-                expiry_bull_call_spread_adjustment(obj, instrument_list, [ticker_expiry], exl_expiry_bullspread)                
-                           
- #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~end of Running all strategies adjustments-----------------------------------------------
+            
+            #---check if time is near to day end and then stop adjustments for intraday strategies only-------
+            if dt.datetime.now() < dt.datetime.strptime(dt.datetime.now().strftime('%Y-%m-%d')+' 14:45','%Y-%m-%d %H:%M'):
+                if expiry_bull_call_spread_startcondition1[0] is not None:
+                    expiry_bull_call_spread_adjustment(obj, instrument_list, [ticker_expiry], exl_expiry_bullspread)   
+                   
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~end of Running all strategies adjustments-----------------------------------------------
+
             time.sleep(120 - ((time.time() - starttime) % 120)) # without this we got "Access denied because of exceeding access rate"
         
         else:
             print("Global Spend limit has reached")
-            break
-            #sys.exit(0) # 0- without error message, 1-with error message in end
-       
-    
-    
+            break    
             
     
     

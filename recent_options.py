@@ -98,7 +98,11 @@ def option_chain(obj, ticker, instrument_list, underlying_price, option_type="CE
 def final_contract(obj, ticker, instrument_list, underlying_price, option_type, duration = 0):
     opt_chain = option_chain(obj, ticker, instrument_list, underlying_price, option_type, duration)
     final_option = opt_chain['symbol'].tolist()
-    return final_option
+    final_option_expiry_date = opt_chain['expiry'].tolist()
+    #print("wahhhhh 22 ji wahhhh")
+    #print(final_option_expiry_date)
+    
+    return final_option, final_option_expiry_date
 
 
 
@@ -246,11 +250,9 @@ def option_contracts_closest_PREMIUM(obj, ticker, instrument_list, underlying_pr
     #print(df_opt_contracts)
           
     df_opt_contracts = df_opt_contracts.loc[df_opt_contracts['expiry'] == expiry_date] #ibirdi 
-    #print(df_opt_contracts)
     
     df_final = df_opt_contracts.sort_values(by=['strike']).reset_index(drop=True)
     
-          
     atm_idx = abs(df_final["strike"].astype(float)/100 - underlying_price).argmin()
     
     if option_type == "CE":
@@ -348,8 +350,8 @@ if __name__ == '__main__':
     print("#####Option chain#########")
     print(opt_chain)
     
-    final_option = final_contract(obj, security, instrument_list, underlying_price, "PE", 0)
-    print(final_option)
+    final_option, final_option_expiry_date = final_contract(obj, security, instrument_list, underlying_price, "PE", 0)
+    print(final_option, "###", final_option_expiry_date)
     
     
     
@@ -360,7 +362,7 @@ if __name__ == '__main__':
     
     
     underlying_price_option = 200
-    expiry_date = "19JUN2024"
+    expiry_date = "18SEP2024"
     strike_security, option_closest, option_closest_price = option_contracts_closest_PREMIUM(obj, security, instrument_list, underlying_price, underlying_price_option, expiry_date, option_type="CE", exchange="NFO")
     
     print(f"Closest Option {option_closest} price = {option_closest_price}")

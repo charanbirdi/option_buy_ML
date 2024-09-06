@@ -162,11 +162,11 @@ def clear_row(exl, i):
     #exl.range("B16:S300").clear_contents()
     exl.range((i+1,1), (i+1,20)).clear_contents() # for clear, we need to add 1 intentionally                 
     exl.range((i+1,38), (i+1,43)).clear_contents()
-    exl.range((i+1,47), (i+1,49)).clear_contents()
-    exl.range((i+1,51), (i+1,51)).clear_contents()
+    exl.range((i+1,47), (i+1,51)).clear_contents()
+    exl.range((i+1,56), (i+1,57)).clear_contents()
                 
-    exl.range((i+1,1), (i+1,54)).color = None   #(242,242,242)
-    exl.range("BN16:BO600").clear_contents() #additional
+    exl.range((i+1,1), (i+1,64)).color = None   #(242,242,242)
+    exl.range("BN16:BO700").clear_contents() #additional
 
 
 
@@ -174,13 +174,16 @@ def clear_row(exl, i):
 def clear_excel_function(exl):
     
     print(f"Clear data for {exl.name}.......") 
-    clear_excel = True
+    #clear_excel = True
     for i in range(row_excel_start_order, row_excel_end_order):
         ticker = exl[i,6].value
         intraday = exl[i,3].value
         datetime_exl = exl[i,1].value
         initial_order = exl[i,40].value
         final_order = exl[i,48].value
+
+        expiry_date = exl[i,8].value
+        
         
         
         if datetime_exl is not None:
@@ -193,6 +196,11 @@ def clear_excel_function(exl):
                     clear_row(exl, i)
                 if all_orders_done(exl) == True: # check if all orders of exl are done and not of same day then clear
                     clear_row(exl, i) #althought we could clear all in one but......
+                
+                expiry_date_convert = dt.datetime.strptime(expiry_date, '%d%b%Y') #change 17SEP2024 to datetime type
+                if expiry_date_convert.date() < dt.date.today(): # we should not only clear but close the trade first
+                    clear_row(exl, i)
+
   
     return None
 
@@ -200,6 +208,75 @@ def clear_excel_function(exl):
 
 
 
+def blank_row_adjustment_excel_function(exl):
+    
+    print(f"Shift the order row to blank space for {exl.name}.......") 
+
+    end_row = exl.range('G700').end('up').row + 1
+
+    for i in range(row_excel_start_order, end_row):
+        ticker = exl[i,6].value
+        
+        if ticker is None:
+            
+            for j in range(i+1, end_row):                
+
+                ticker2 = exl[j,6].value
+                
+
+                if (ticker2  is not None):
+                    #print(f"{i} , {j}")
+                    
+                    exl.range((j+1,1), (j+1,53)).copy()
+                    exl.range((i+1,1), (i+1,1)).paste()
+
+                    clear_row(exl, j) # to clear the row
+
+                    break
+    return None
+
+
+
+
+
+
+
+
+def check_neartoexpiry(exl, obj, instrument_list):
+
+    print(f"Check Near to Expiry order for {exl.name}.......") 
+    for i in range(row_excel_start_order, row_excel_end_order):
+        stock = exl[i,6].value
+        initial_order = exl[i,40].value
+        final_order = exl[i,47].value 
+        intraday = exl[i,3].value
+
+        buy_sell = exl[i,40].value
+        stock_price = exl[i,41].value
+        stock_qty = exl[i,42].value
+        lot_per_option = exl[i,7].value
+        
+        expiry_date = exl[i,8].value
+
+        
+
+        if initial_order is not None and final_order is None:
+
+            #print(expiry_date)
+
+            if expiry_date.date() <= dt.date.today():
+                print("nearrrrrrrrrrrrrrrrrrr to expiry")
+                
+                if buy_sell == "BUY":
+                    buy_sell_final = "SELL"
+                else:
+                    buy_sell_final = "BUY"
+
+                current_price = get_ltp_OPTION(obj, instrument_list, stock, exchange="NFO")
+
+                place_order_loss(stock,buy_sell_final,stock_qty,current_price,"ind_PnL",exl, i)
+
+    return None
 
 
 
@@ -314,11 +391,11 @@ def get_ltp_INSTRUMENT(obj, instrument_list, ticker,exchange="NSE"):
 
 def quantity(obj, instrument_list, ticker,exchange="NFO"):
     
-    ltp = get_ltp_OPTION(obj, instrument_list, ticker, exchange)
-    lot_option = int(token_lookup_OPTION(ticker, instrument_list)[1])
-    quantity_lots = int(single_pos_size/(ltp*lot_option))
+    #ltp = get_ltp_OPTION(obj, instrument_list, ticker, exchange)
+    #lot_option = int(token_lookup_OPTION(ticker, instrument_list)[1])
+    #quantity_lots = int(single_pos_size/(ltp*lot_option))
 
-    #quantity_lots = 2 # I have hard coaded the lots to check relistic P&L
+    quantity_lots = 2 # I have hard coaded the lots to check relistic P&L
     
     return quantity_lots
 
@@ -603,10 +680,16 @@ def place_robo_order(obj, instrument_list, ticker, up_down, strategy, exl_order,
     underlying_price = get_ltp_INSTRUMENT(obj, instrument_list, ticker, "NSE")
     print(underlying_price)
     
-    #def final_contract(obj, ticker, instrument_list, underlying_price, option_type, duration = 0):
+    final_contract_sell_list, final_contract_sell_expirydate_list = final_contract(obj, ticker, instrument_list, underlying_price, option_type_sell, duration = 0)
+    final_contract_sell = final_contract_sell_list[2]
+    final_contract_sell_expirydate = final_contract_sell_expirydate_list[2]
     
-    final_contract_sell = final_contract(obj, ticker, instrument_list, underlying_price, option_type_sell, duration = 0)[2]
-    final_contract_buy = final_contract(obj, ticker, instrument_list, underlying_price, option_type_buy, duration = 0)[2]
+    final_contract_buy_list, final_contract_buy_expirydate_list = final_contract(obj, ticker, instrument_list, underlying_price, option_type_buy, duration = 0)
+    final_contract_buy = final_contract_buy_list[2]
+    final_contract_buy_expirydate = final_contract_buy_expirydate_list[2]
+
+
+
     
     print(final_contract_sell + "_" + final_contract_buy)
     
@@ -636,6 +719,10 @@ def place_robo_order(obj, instrument_list, ticker, up_down, strategy, exl_order,
             stock2 = exl_order[i,2].value
             if stock2 is None:
                 print(f"Sell {quantity_option} Lots of {final_contract_sell}")
+
+                latest_ltp_sell = get_ltp_OPTION(obj, instrument_list, final_contract_sell, exchange="NFO")
+
+
                 exl_order[i,1].value = dt.datetime.now()
                 exl_order[i,2].value = strategy# & "_SELL"
                 exl_order[i,3].value = "Intraday"
@@ -643,19 +730,26 @@ def place_robo_order(obj, instrument_list, ticker, up_down, strategy, exl_order,
                 exl_order[i,5].value = ticker
                 exl_order[i,6].value = final_contract_sell
                 exl_order[i,7].value = lot_size
+                exl_order[i,8].value = final_contract_sell_expirydate
                 exl_order[i,10].value = loss_limit
                 exl_order[i,11].value = profit_limit
                 exl_order[i,40].value = "SELL"
-                exl_order[i,41].value = get_ltp_OPTION(obj, instrument_list, final_contract_sell, exchange="NFO")
+                exl_order[i,41].value = latest_ltp_sell
                                     #def get_ltp_OPTION(obj, instrument_list, ticker, exchange="NFO")
                 exl_order[i,42].value = quantity_option #quantity(final_contract_sell)
                 
+                exl_order[i,49].value = quantity_option
+                exl_order[i,50].value = latest_ltp_sell
+
                 tel_msg = f"SELL {quantity_option} no. of {final_contract_sell}"
                 telegram_message(tel_msg)
                 
                             
                 i = i+1
                 print(f"Buy {quantity_option} Lots of {final_contract_buy}")
+
+                latest_ltp_buy = get_ltp_OPTION(obj, instrument_list, final_contract_buy, exchange="NFO")
+
                 exl_order[i,1].value = dt.datetime.now()
                 exl_order[i,2].value = strategy# "_BUY"
                 exl_order[i,3].value = "Intraday"
@@ -663,11 +757,15 @@ def place_robo_order(obj, instrument_list, ticker, up_down, strategy, exl_order,
                 exl_order[i,5].value = ticker
                 exl_order[i,6].value = final_contract_buy
                 exl_order[i,7].value = lot_size
+                exl_order[i,8].value = final_contract_buy_expirydate
                 exl_order[i,10].value = loss_limit
                 exl_order[i,11].value = profit_limit
                 exl_order[i,40].value = "BUY"
-                exl_order[i,41].value = get_ltp_OPTION(obj, instrument_list, final_contract_buy, exchange="NFO")
+                exl_order[i,41].value = latest_ltp_buy
                 exl_order[i,42].value = quantity_option #quantity(final_contract_buy)
+
+                exl_order[i,49].value = quantity_option
+                exl_order[i,50].value = latest_ltp_buy
                 
                 tel_msg = f"BUY {quantity_option} no. of {final_contract_buy}"
                 telegram_message(tel_msg)
@@ -675,9 +773,6 @@ def place_robo_order(obj, instrument_list, ticker, up_down, strategy, exl_order,
                 break  # As above is for 1 ticker only
     
     return None
-
-
-#place_robo_order(instrument_list, "BANKNIFTY", "BUY", exchange="NSE")
 
 
 
@@ -821,7 +916,7 @@ def CLOSE_allindividual_open_positions(obj, instrument_list, exl_order):
         intraday = exl_order[i,3].value           
         
         if initial_order is not None and final_order is None:
-            if intraday == "intraday":
+            if intraday == "Intraday":
             
                 buy_sell = exl_order[i,40].value
                 stock_price = exl_order[i,41].value
@@ -936,8 +1031,6 @@ def copy_LTP_to_excel(obj, instrument_list, exl_order, exchange="NFO"):
  
     
  
-#def place_robo_order(obj, instrument_list, ticker, up_down, strategy, exl_order, exchange="NSE"):  
-
 def short_strangle(obj, instrument_list, ticker, current_price_ticker, strategy, exl_order):
     
     '''
@@ -950,10 +1043,30 @@ def short_strangle(obj, instrument_list, ticker, current_price_ticker, strategy,
     
     # The call strike which we select to sell should be at or above the upper range,
     # similarly the put strike should be at or below the lower range.
-    final_contract_CALL = final_contract(obj, ticker, instrument_list, current_price_ticker, "CE", duration = 0)[0]
-                        #final_contract(obj, ticker, instrument_list, underlying_price, option_type, duration = 0)
+    final_contract_CALL_list, final_contract_CALL_expirydate_list = final_contract(obj, ticker, instrument_list, current_price_ticker, "CE", duration = 0)
+    final_contract_CALL = final_contract_CALL_list[0]
+    final_contract_CALL_expirydate = final_contract_CALL_expirydate_list[0]
+
+    final_contract_PUT_list, final_contract_PUT_expirydate_list = final_contract(obj, ticker, instrument_list, current_price_ticker, "PE", duration = 0)
+    final_contract_PUT = final_contract_PUT_list[-1]
+    final_contract_PUT_expirydate = final_contract_PUT_expirydate_list[-1]
     
-    final_contract_PUT = final_contract(obj, ticker, instrument_list, current_price_ticker, "PE", duration = 0)[-1]
+    
+    
+    
+    #final_contract_sell_list, final_contract_sell_expirydate_list = final_contract(obj, ticker, instrument_list, underlying_price, option_type_sell, duration = 0)
+    #final_contract_sell = final_contract_sell_list[2]
+    #final_contract_sell_expirydate = final_contract_sell_expirydate_list[2]
+    
+    #final_contract_buy_list, final_contract_buy_expirydate_list = final_contract(obj, ticker, instrument_list, underlying_price, option_type_buy, duration = 0)
+    #final_contract_buy = final_contract_buy_list[2]
+    #final_contract_buy_expirydate = final_contract_buy_expirydate_list[2]
+
+
+
+
+
+
     
     lot_size = token_lookup_OPTION(final_contract_CALL, instrument_list)[1]
     
@@ -961,6 +1074,9 @@ def short_strangle(obj, instrument_list, ticker, current_price_ticker, strategy,
         
         stock2 = exl_order[i,1].value
         if stock2 is None:
+            ltp_sell_quantity = quantity(obj, instrument_list, final_contract_CALL)
+            ltp_sell = get_ltp_OPTION(obj, instrument_list, final_contract_CALL, exchange="NFO")
+            
             exl_order[i,1].value = dt.datetime.now()
             exl_order[i,2].value = strategy
             exl_order[i,3].value = "Overnight"
@@ -968,11 +1084,19 @@ def short_strangle(obj, instrument_list, ticker, current_price_ticker, strategy,
             exl_order[i,5].value = ticker
             exl_order[i,6].value = final_contract_CALL
             exl_order[i,7].value = lot_size
+            exl_order[i,8].value = final_contract_CALL_expirydate
             exl_order[i,40].value = "SELL"
-            exl_order[i,41].value = get_ltp_OPTION(obj, instrument_list, final_contract_CALL, exchange="NFO")
-            exl_order[i,42].value = quantity(obj, instrument_list, final_contract_CALL)
+            exl_order[i,41].value = ltp_sell
+            exl_order[i,42].value = ltp_sell_quantity
+            
+            exl_order[i,49].value = ltp_sell_quantity
+            exl_order[i,50].value = ltp_sell
+                
                         
             i = i+1
+            #ltp_buy_quantity = quantity(obj, instrument_list, final_contract_PUT)
+            ltp_buy = get_ltp_OPTION(obj, instrument_list, final_contract_PUT, exchange="NFO")
+            
             exl_order[i,1].value = dt.datetime.now()
             exl_order[i,2].value = strategy
             exl_order[i,3].value = "Overnight"
@@ -980,9 +1104,13 @@ def short_strangle(obj, instrument_list, ticker, current_price_ticker, strategy,
             exl_order[i,5].value = ticker
             exl_order[i,6].value = final_contract_PUT
             exl_order[i,7].value = lot_size
+            exl_order[i,8].value = final_contract_PUT_expirydate
             exl_order[i,40].value = "SELL"
-            exl_order[i,41].value = get_ltp_OPTION(obj, instrument_list, final_contract_PUT, exchange="NFO")
-            exl_order[i,42].value = quantity(obj, instrument_list, final_contract_PUT)
+            exl_order[i,41].value = ltp_buy 
+            exl_order[i,42].value = ltp_sell_quantity # As its strangle, so same quantity will be used
+            
+            exl_order[i,49].value = ltp_sell_quantity
+            exl_order[i,50].value = ltp_buy
 
             break  # As above is for 1 ticker only
     
@@ -1029,10 +1157,7 @@ def delta_nutral_initial_orders(obj, instrument_list, ticker, underlying_price, 
     option_delta_CE, delta_CE, option_expiry_CE, security_strike_CE = option_contracts_closest_DELTA(obj, ticker, instrument_list, underlying_price, delta_cosidered_selling, duration = this_or_next_week_or, option_type="CE", exchange="NFO")
     option_delta_PE, delta_PE, option_expiry_PE, security_strike_PE = option_contracts_closest_DELTA(obj, ticker, instrument_list, underlying_price, delta_cosidered_selling, duration = this_or_next_week_or, option_type="PE", exchange="NFO")
     
-    
-    #final_contract_CALL = final_contract(obj, ticker, instrument_list, current_price_ticker, "CE", duration = 0)[0]    
-    #final_contract_PUT = final_contract(obj, ticker, instrument_list, current_price_ticker, "PE", duration = 0)[-1]
-    
+        
     lot_size = token_lookup_OPTION(option_delta_CE, instrument_list)[1]
     no_lots = quantity(obj, instrument_list, option_delta_CE)
     
@@ -1059,10 +1184,15 @@ def delta_nutral_initial_orders(obj, instrument_list, ticker, underlying_price, 
             exl_deltanutral[i,42].value = no_lots            
             exl_deltanutral[i,50].value = option_ltp_CE
             exl_deltanutral[i,55].value = "Strangle"
+
+            exl_deltanutral[i,49].value = no_lots
+            exl_deltanutral[i,50].value = option_ltp_CE
+
                         
             i = i+1
             
             option_ltp_PE = get_ltp_OPTION(obj, instrument_list, option_delta_PE, exchange="NFO")
+
             exl_deltanutral[i,1].value = dt.datetime.now()
             exl_deltanutral[i,2].value = strategy
             exl_deltanutral[i,3].value = "Overnight"
@@ -1080,6 +1210,9 @@ def delta_nutral_initial_orders(obj, instrument_list, ticker, underlying_price, 
             exl_deltanutral[i,42].value = no_lots #quantity(obj, instrument_list, option_delta_PE)
             exl_deltanutral[i,50].value = option_ltp_PE
             exl_deltanutral[i,55].value = "Strangle"
+
+            exl_deltanutral[i,49].value = no_lots
+            exl_deltanutral[i,50].value = option_ltp_PE
             
             exl_deltanutral[i,15].value = (option_ltp_PE + option_ltp_CE)
             #exl_deltanutral[i,16].value = limit_diff_premium_delta_strategy/100
@@ -1123,6 +1256,10 @@ def delta_nutral_ADJUSTMENT_orders(ticker, option_closest, option_closest_price,
             exl_deltanutral[i,50].value = option_closest_price
             exl_deltanutral[i,55].value = sub_strategy
             exl_deltanutral[i,56].value = option_closest_price
+
+            exl_deltanutral[i,49].value = stock_qty
+            exl_deltanutral[i,50].value = option_closest_price
+
             break
                
     return None
@@ -1161,6 +1298,10 @@ def expiry_bull_call_spread_ADJUSTMENT_orders(ticker, option_closest, option_clo
             exl[i,50].value = option_closest_price
             exl[i,55].value = sub_strategy
             exl[i,56].value = option_closest_price
+
+            exl[i,49].value = stock_qty
+            exl[i,50].value = option_closest_price
+
             break
                
     return None
@@ -1363,6 +1504,8 @@ def delta_nutral_adjustment(obj, instrument_list, tickers, exl_deltanutral):
         if check_security_percentage_PnL_limit_reached(obj, instrument_list, ticker, exl_deltanutral) == True:
             continue #The continue keyword is used to end the current iteration and continues to the next iteration
 
+        #---check if time is near to day end and then stop adjustments for intraday strategies-------
+          
 
 #ahhhhaaaa----------------get LTP of all the positions----------------------          
         total_premium = 0        
@@ -1574,6 +1717,9 @@ def expiry_bull_call_spread_initial_orders(obj, security, option, option_expiry,
             exl[i,42].value = no_lots            
             exl[i,50].value = option_ltp_buy
             exl[i,55].value = "Bull Spread"
+
+            #exl[i,49].value = no_lots
+            #exl[i,50].value = option_ltp_buy
                         
             i = i+1
             
